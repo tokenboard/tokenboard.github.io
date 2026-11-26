@@ -1,0 +1,2703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>TokenHub 供需板 — AI API / Token 资源供需聚合平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-page: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --bg-hover: #f8fafc;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --text-faint: #94a3b8;
+
+      --accent: #0f172a;
+      --accent-hover: #1e293b;
+      --accent-text: #ffffff;
+
+      --supply-bg: #ecfdf5;
+      --supply-text: #059669;
+      --supply-border: #a7f3d0;
+      --supply-dot: #10b981;
+
+      --demand-bg: #fff7ed;
+      --demand-text: #ea580c;
+      --demand-border: #fed7aa;
+      --demand-dot: #f97316;
+
+      --match-bg: #eff6ff;
+      --match-border: #bfdbfe;
+      --match-text: #1d4ed8;
+
+      --price-bg: #fefce8;
+      --price-text: #a16207;
+      --price-border: #fde68a;
+
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+      --shadow-modal: 0 20px 50px rgba(15, 23, 42, 0.18);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
+    }
+
+    html.dark {
+      --bg-page: #09090b;
+      --bg-surface: #111113;
+      --bg-subtle: #18181b;
+      --bg-hover: #1f1f23;
+      --border: #27272a;
+      --border-strong: #3f3f46;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --text-faint: #52525b;
+
+      --accent: #fafafa;
+      --accent-hover: #e4e4e7;
+      --accent-text: #09090b;
+
+      --supply-bg: rgba(16, 185, 129, 0.12);
+      --supply-text: #34d399;
+      --supply-border: rgba(16, 185, 129, 0.28);
+      --supply-dot: #10b981;
+
+      --demand-bg: rgba(249, 115, 22, 0.12);
+      --demand-text: #fb923c;
+      --demand-border: rgba(249, 115, 22, 0.28);
+      --demand-dot: #f97316;
+
+      --match-bg: rgba(59, 130, 246, 0.12);
+      --match-border: rgba(59, 130, 246, 0.3);
+      --match-text: #60a5fa;
+
+      --price-bg: rgba(234, 179, 8, 0.12);
+      --price-text: #facc15;
+      --price-border: rgba(234, 179, 8, 0.28);
+
+      --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+      --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.65);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    html.dark .header {
+      background: rgba(17, 17, 19, 0.85);
+    }
+
+    .header-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 1px 7px;
+      border-radius: var(--radius-full);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .auth-user-group {
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .auth-user-group.visible {
+      display: inline-flex;
+    }
+
+    .user-pill {
+      height: 34px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mine-toggle-btn {
+      height: 34px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mine-toggle-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .mine-toggle-btn.active {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 3px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      gap: 4px;
+    }
+
+    .auth-tab {
+      height: 32px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .auth-tab.active {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-weight: 600;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .auth-success-text {
+      font-size: 12.5px;
+      color: var(--supply-text);
+      background: var(--supply-bg);
+      border: 1px solid var(--supply-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: none;
+    }
+
+    .auth-success-text.visible {
+      display: block;
+    }
+
+    .icon-btn {
+      height: 36px;
+      padding: 0 11px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      height: 36px;
+      padding: 0 15px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: #10b981;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(16, 185, 129, 0.25);
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: #059669;
+      transform: translateY(-0.5px);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 20px 20px 64px;
+    }
+
+    /* View Tabs & Sort Row */
+    .top-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .segmented-tabs {
+      display: inline-flex;
+      padding: 3px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      gap: 2px;
+    }
+
+    .seg-tab {
+      padding: 6px 14px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .seg-tab:hover {
+      color: var(--text-primary);
+    }
+
+    .seg-tab.active {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-weight: 600;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .tab-count {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      padding: 0 6px;
+      height: 18px;
+      line-height: 18px;
+      border-radius: var(--radius-full);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+
+    .seg-tab.active .tab-count {
+      background: var(--bg-page);
+      color: var(--text-primary);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-supply { background: var(--supply-dot); }
+    .dot-demand { background: var(--demand-dot); }
+
+    .sort-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sort-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .sort-select {
+      height: 34px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .sort-select:focus {
+      border-color: var(--border-strong);
+    }
+
+    /* Filter Panel */
+    .filter-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .search-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 38px;
+      padding: 0 36px 0 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-page);
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .search-input:focus {
+      border-color: #10b981;
+      background: var(--bg-surface);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-clear.visible {
+      display: flex;
+    }
+
+    .search-clear:hover {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+
+    .filter-groups {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .filter-group-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      width: 58px;
+      flex-shrink: 0;
+      padding-top: 4px;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .filter-chip {
+      height: 26px;
+      padding: 0 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+
+    .filter-chip.active {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
+    }
+
+    .filter-footer {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .filter-footer.visible {
+      display: flex;
+    }
+
+    .reset-filters-btn {
+      border: none;
+      background: transparent;
+      color: #10b981;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .reset-filters-btn:hover {
+      text-decoration: underline;
+    }
+
+    /* Match Banner */
+    .match-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      border-radius: var(--radius-md);
+      background: var(--match-bg);
+      border: 1px solid var(--match-border);
+      color: var(--match-text);
+      font-size: 13px;
+    }
+
+    .match-banner.visible {
+      display: flex;
+    }
+
+    .match-banner-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .match-banner-title {
+      font-weight: 600;
+    }
+
+    .match-exit-btn {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--match-border);
+      background: var(--bg-surface);
+      color: var(--match-text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .match-exit-btn:hover {
+      background: var(--bg-subtle);
+    }
+
+    /* Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--shadow-xs);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .card-badges-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .type-badge.supply {
+      background: var(--supply-bg);
+      color: var(--supply-text);
+      border-color: var(--supply-border);
+    }
+
+    .type-badge.demand {
+      background: var(--demand-bg);
+      color: var(--demand-text);
+      border-color: var(--demand-border);
+    }
+
+    .match-reason-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: var(--match-bg);
+      color: var(--match-text);
+      border: 1px solid var(--match-border);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.4;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .card.closed {
+      opacity: 0.68;
+      background: var(--bg-subtle);
+    }
+
+    .status-badge-closed {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-strong);
+    }
+
+    .card-manage-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+
+    .manage-icon-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-faint);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      font-size: 11.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.15s ease;
+    }
+
+    .manage-icon-btn:hover {
+      color: var(--text-primary);
+      background: var(--bg-subtle);
+    }
+
+    .manage-icon-btn.danger:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Skeleton Loading */
+    .skeleton-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .skeleton-line {
+      height: 14px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.3s infinite linear;
+    }
+
+    .skeleton-line.w-30 { width: 30%; height: 20px; border-radius: 9999px; }
+    .skeleton-line.w-75 { width: 75%; height: 18px; }
+    .skeleton-line.w-90 { width: 90%; }
+    .skeleton-line.w-60 { width: 60%; }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .realtime-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .realtime-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    .form-error-text {
+      font-size: 12px;
+      color: #ef4444;
+      display: none;
+    }
+
+    .form-error-text.visible {
+      display: block;
+    }
+
+    .card-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .pill-channel {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .pill-price {
+      background: var(--price-bg);
+      color: var(--price-text);
+      border-color: var(--price-border);
+      font-weight: 600;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding-top: 2px;
+    }
+
+    .contact-preview {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .card-btn {
+      height: 34px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .card-btn:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-strong);
+    }
+
+    .card-btn.copied {
+      background: var(--supply-bg);
+      color: var(--supply-text);
+      border-color: var(--supply-border);
+    }
+
+    .card-btn.match-btn {
+      color: var(--match-text);
+      border-color: var(--match-border);
+      background: var(--match-bg);
+    }
+
+    .card-btn.match-btn:hover {
+      filter: brightness(0.96);
+    }
+
+    /* Empty State */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 56px 20px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      color: var(--text-muted);
+    }
+
+    .empty-state h3 {
+      font-size: 15px;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    /* Footer */
+    .page-footer {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 16px 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+
+    .link-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .link-btn:hover {
+      color: var(--text-primary);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-modal);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalIn 0.18s ease-out;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .smart-parse-box {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+
+    .smart-parse-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+
+    .smart-parse-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sample-fill-btn {
+      border: none;
+      background: transparent;
+      color: #10b981;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .sample-fill-btn:hover {
+      text-decoration: underline;
+    }
+
+    .smart-textarea-wrap {
+      position: relative;
+      display: flex;
+    }
+
+    .smart-textarea {
+      width: 100%;
+      min-height: 70px;
+      padding: 8px 54px 24px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      font-size: 12.5px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+    }
+
+    .smart-textarea:focus {
+      border-color: #10b981;
+    }
+
+    .smart-clear-btn {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-size: 11.5px;
+      cursor: pointer;
+      display: none;
+      transition: all 0.15s ease;
+    }
+
+    .smart-clear-btn.visible {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .smart-clear-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+
+    .smart-parse-hint {
+      margin-top: 7px;
+      font-size: 12px;
+      color: var(--supply-text);
+      display: none;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .smart-parse-hint.visible {
+      display: flex;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .required {
+      color: #ef4444;
+    }
+
+    .type-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .type-option {
+      height: 38px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .type-option.active-supply {
+      background: var(--supply-bg);
+      color: var(--supply-text);
+      border-color: var(--supply-border);
+    }
+
+    .type-option.active-demand {
+      background: var(--demand-bg);
+      color: var(--demand-text);
+      border-color: var(--demand-border);
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 8px 11px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-page);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: #10b981;
+      background: var(--bg-surface);
+    }
+
+    .form-textarea {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    .multi-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .select-chip {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border);
+      background: var(--bg-page);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .select-chip.selected {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--bg-surface);
+    }
+
+    .btn-secondary {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--accent);
+      color: var(--accent-text);
+      padding: 9px 16px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-md);
+      animation: toastIn 0.2s ease-out;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive Mobile */
+    @media (max-width: 640px) {
+      .header-inner {
+        padding: 10px 14px;
+      }
+      .brand-text p {
+        display: none;
+      }
+      .theme-label {
+        display: none;
+      }
+      .container {
+        padding: 14px 14px 48px;
+      }
+      .top-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .segmented-tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .seg-tab {
+        justify-content: center;
+        padding: 7px 6px;
+        font-size: 12.5px;
+      }
+      .sort-bar {
+        justify-content: space-between;
+      }
+      .filter-group {
+        flex-direction: column;
+        gap: 5px;
+      }
+      .filter-group-label {
+        width: auto;
+        padding-top: 0;
+      }
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .smart-parse-row {
+        flex-direction: column;
+      }
+      .parse-btn {
+        height: 36px;
+      }
+      .modal {
+        max-height: 92vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>TokenHub 供需板 <span class="brand-badge">Beta</span></h1>
+          <p>AI API / Token 资源精准对接，高效匹配供需</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="themeToggleBtn" type="button" title="切换深色/浅色模式">
+          <span id="themeIcon">🌙</span>
+          <span class="theme-label" id="themeLabel">深色</span>
+        </button>
+
+        <button class="icon-btn" id="openAuthBtn" type="button">登录 / 注册</button>
+
+        <div class="auth-user-group" id="authUserGroup">
+          <span class="user-pill" id="userNicknameBadge" title="">👤 用户</span>
+          <button class="mine-toggle-btn" id="onlyMineBtn" type="button">只看我的发布</button>
+          <button class="icon-btn" id="logoutBtn" type="button" style="height: 34px;">退出登录</button>
+        </div>
+
+        <button class="btn-primary" id="openPublishBtn" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          发布供需
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Top Tabs & Sort -->
+    <div class="top-controls">
+      <div class="segmented-tabs" role="tablist" aria-label="供需视图切换">
+        <button class="seg-tab active" data-view="all" type="button">
+          全部 <span class="tab-count" id="countAll">0</span>
+        </button>
+        <button class="seg-tab" data-view="supply" type="button">
+          <span class="dot dot-supply"></span>出资源 <span class="tab-count" id="countSupply">0</span>
+        </button>
+        <button class="seg-tab" data-view="demand" type="button">
+          <span class="dot dot-demand"></span>找台子 <span class="tab-count" id="countDemand">0</span>
+        </button>
+      </div>
+
+      <div class="sort-bar">
+        <button class="icon-btn" id="refreshBtn" type="button" title="刷新最新供需" style="height: 34px; padding: 0 10px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          刷新
+        </button>
+        <span class="sort-label">排序：</span>
+        <select class="sort-select" id="sortSelect" aria-label="排序方式">
+          <option value="latest">最新发布</option>
+          <option value="discount">价格 / 折扣优先</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Search & Multi-Tag Filter -->
+    <section class="filter-panel" aria-label="搜索与筛选">
+      <div class="search-row">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="搜索模型、渠道、折扣或备注关键词（如 Claude、OpenRouter、跑付、9折）..."
+          autocomplete="off"
+        />
+        <button class="search-clear" id="searchClearBtn" type="button" title="清空搜索">✕</button>
+      </div>
+
+      <div class="filter-groups">
+        <div class="filter-group">
+          <span class="filter-group-label">渠道</span>
+          <div class="chip-list" id="channelFilterChips"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-group-label">模型</span>
+          <div class="chip-list" id="modelFilterChips"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-group-label">交易条件</span>
+          <div class="chip-list" id="conditionFilterChips"></div>
+        </div>
+      </div>
+
+      <div class="filter-footer" id="filterFooter">
+        <span id="filterSummaryText">已启用筛选条件</span>
+        <button class="reset-filters-btn" id="resetFiltersBtn" type="button">清空全部筛选</button>
+      </div>
+    </section>
+
+    <!-- Smart Match Banner -->
+    <div class="match-banner" id="matchBanner">
+      <div class="match-banner-info">
+        <span>⚡ <strong>智能匹配模式</strong>：正在为</span>
+        <span class="match-banner-title" id="matchSourceTitle"></span>
+        <span id="matchResultCount"></span>
+      </div>
+      <button class="match-exit-btn" id="exitMatchBtn" type="button">退出匹配</button>
+    </div>
+
+    <!-- Cards Grid -->
+    <section class="cards-grid" id="cardsGrid" aria-live="polite"></section>
+  </main>
+
+  <footer class="page-footer">
+    <span>TokenHub 供需板 · 数据实时同步自 Supabase 云端</span>
+    <span class="realtime-pill"><span class="realtime-dot"></span>实时同步已连接</span>
+  </footer>
+
+  <!-- Publish Modal -->
+  <div class="modal-backdrop" id="publishModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">发布供需信息</h2>
+        <button class="modal-close" id="closeModalBtn" type="button" aria-label="关闭弹窗">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Smart Paste Box -->
+        <div class="smart-parse-box">
+          <div class="smart-parse-head">
+            <span class="smart-parse-title">✨ 粘贴话术自动识别</span>
+            <button class="sample-fill-btn" id="fillSampleBtn" type="button">填入示例文本</button>
+          </div>
+          <div class="smart-textarea-wrap">
+            <textarea
+              id="rawTextInput"
+              class="smart-textarea"
+              placeholder="直接粘贴任意供需话术，系统将自动识别并填充下方字段（例：出 OpenRouter 跑 Claude，全模型可蒸跑付，9折）"
+            ></textarea>
+            <button class="smart-clear-btn" id="clearRawTextBtn" type="button">清空</button>
+          </div>
+          <div class="smart-parse-hint" id="smartParseHint">✓ 已自动识别并填充，请核对后发布</div>
+        </div>
+
+        <!-- Form -->
+        <form id="publishForm" class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">供需类型 <span class="required">*</span></label>
+            <div class="type-selector">
+              <button type="button" class="type-option active-supply" id="typeSupplyBtn" data-type="supply">
+                <span class="dot dot-supply"></span> 出资源（供应）
+              </button>
+              <button type="button" class="type-option" id="typeDemandBtn" data-type="demand">
+                <span class="dot dot-demand"></span> 找台子（需求）
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label" for="inputTitle">核心标题 <span class="required">*</span></label>
+            <input type="text" id="inputTitle" class="form-input" placeholder="如：OpenRouter 跑 Claude / GPT 全模型" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inputChannel">渠道 <span class="required">*</span></label>
+            <select id="inputChannel" class="form-select">
+              <option value="OpenRouter">OpenRouter</option>
+              <option value="官 Key">官 Key</option>
+              <option value="中转站">中转站</option>
+              <option value="直连账号">直连账号</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inputPrice">价格 / 折扣 <span class="required">*</span></label>
+            <input type="text" id="inputPrice" class="form-input" placeholder="如：9折、8.5折、量大详谈" required />
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label">支持模型（可多选，也可下方手填补充）</label>
+            <div class="multi-chips" id="formModelChips"></div>
+            <input type="text" id="inputCustomModels" class="form-input" placeholder="补充特定型号（可选，如：Claude 4.5 Opus, o3-pro）" style="margin-top: 4px;" />
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label">合作条件标签</label>
+            <div class="multi-chips" id="formConditionChips"></div>
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label" for="inputDesc">详细说明</label>
+            <textarea id="inputDesc" class="form-textarea" placeholder="补充并发限制、日消耗量、验货方式、账期等说明..."></textarea>
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label" for="inputContact">联系方式（微信 / Telegram）<span class="required">*</span></label>
+            <input type="text" id="inputContact" class="form-input" placeholder="如：vx: token_888 或 tg: @token_hub" required />
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" id="cancelModalBtn" type="button">取消</button>
+        <button class="btn-primary" id="submitPublishBtn" type="submit" form="publishForm">确认发布</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal (Login / Register) -->
+  <div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal" style="max-width: 410px;">
+      <div class="modal-header">
+        <h2 id="authModalTitle">账号登录 / 注册</h2>
+        <button class="modal-close" id="closeAuthModalBtn" type="button" aria-label="关闭弹窗">✕</button>
+      </div>
+      <form id="authForm">
+        <div class="modal-body" style="gap: 14px;">
+          <div class="auth-tabs" role="tablist">
+            <button type="button" class="auth-tab active" id="authTabLogin" data-auth-mode="login">登录</button>
+            <button type="button" class="auth-tab" id="authTabRegister" data-auth-mode="register">注册新账号</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="authEmail">邮箱 <span class="required">*</span></label>
+            <input type="email" id="authEmail" class="form-input" placeholder="请输入邮箱地址" required autocomplete="email" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="authPassword">密码（至少 6 位）<span class="required">*</span></label>
+            <input type="password" id="authPassword" class="form-input" placeholder="请输入至少 6 位密码" minlength="6" required autocomplete="current-password" />
+          </div>
+
+          <div class="form-group" id="authNicknameGroup" style="display: none;">
+            <label class="form-label" for="authNickname">昵称（可选，展示在帖子上）</label>
+            <input type="text" id="authNickname" class="form-input" placeholder="如：老张、Token玩家" maxlength="20" />
+          </div>
+
+          <span class="form-error-text" id="authErrorText"></span>
+          <div class="auth-success-text" id="authSuccessText"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelAuthModalBtn" type="button">取消</button>
+          <button class="btn-primary" id="submitAuthBtn" type="submit">立即登录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    (function () {
+      const SUPABASE_URL = 'https://ujjrqvoyneefcxfssfjd.supabase.co';
+      const SUPABASE_KEY = 'sb_publishable_mKz_DgPb23mDC89hOxEnSw_IXlwyn5Z';
+      const TABLE_NAME = 'tokenhub_posts';
+      const SELECT_COLUMNS = 'id, user_id, author_name, type, title, channel, models, price, conditions, description, contact, status, created_at';
+      const THEME_KEY = 'tokenhub_theme_v1';
+
+      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      const CHANNEL_OPTIONS = ['OpenRouter', '官 Key', '中转站', '直连账号'];
+      const MODEL_OPTIONS = ['Claude', 'GPT', 'Gemini', '全模型'];
+      const CONDITION_FILTER_OPTIONS = ['跑付', '预付', '可蒸', '量大', '共享', '9折及以下'];
+      const CONDITION_FORM_OPTIONS = ['跑付', '预付', '可蒸', '量大', '共享'];
+
+      // State
+      let posts = [];
+      let isLoading = true;
+      let loadError = null;
+      let currentUser = null;
+      let onlyMine = false;
+      let authMode = 'login'; // 'login' | 'register'
+      let pendingOpenPublishAfterLogin = false;
+
+      let currentView = 'all'; // 'all' | 'supply' | 'demand'
+      let searchQuery = '';
+      let selectedChannels = new Set();
+      let selectedModels = new Set();
+      let selectedConditions = new Set();
+      let sortBy = 'latest';
+      let matchSourceId = null;
+
+      // Form State
+      let formType = 'supply';
+      let formModels = new Set(['Claude']);
+      let formConditions = new Set(['跑付']);
+
+      // DOM Elements
+      const cardsGrid = document.getElementById('cardsGrid');
+      const searchInput = document.getElementById('searchInput');
+      const searchClearBtn = document.getElementById('searchClearBtn');
+      const sortSelect = document.getElementById('sortSelect');
+      const refreshBtn = document.getElementById('refreshBtn');
+      const filterFooter = document.getElementById('filterFooter');
+      const filterSummaryText = document.getElementById('filterSummaryText');
+      const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+      const matchBanner = document.getElementById('matchBanner');
+      const matchSourceTitle = document.getElementById('matchSourceTitle');
+      const matchResultCount = document.getElementById('matchResultCount');
+      const exitMatchBtn = document.getElementById('exitMatchBtn');
+
+      const countAll = document.getElementById('countAll');
+      const countSupply = document.getElementById('countSupply');
+      const countDemand = document.getElementById('countDemand');
+
+      const openAuthBtn = document.getElementById('openAuthBtn');
+      const authUserGroup = document.getElementById('authUserGroup');
+      const userNicknameBadge = document.getElementById('userNicknameBadge');
+      const onlyMineBtn = document.getElementById('onlyMineBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      const authModal = document.getElementById('authModal');
+      const authTabLogin = document.getElementById('authTabLogin');
+      const authTabRegister = document.getElementById('authTabRegister');
+      const authForm = document.getElementById('authForm');
+      const authEmail = document.getElementById('authEmail');
+      const authPassword = document.getElementById('authPassword');
+      const authNicknameGroup = document.getElementById('authNicknameGroup');
+      const authNickname = document.getElementById('authNickname');
+      const authErrorText = document.getElementById('authErrorText');
+      const authSuccessText = document.getElementById('authSuccessText');
+      const submitAuthBtn = document.getElementById('submitAuthBtn');
+
+      const publishModal = document.getElementById('publishModal');
+      const openPublishBtn = document.getElementById('openPublishBtn');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      const cancelModalBtn = document.getElementById('cancelModalBtn');
+      const publishForm = document.getElementById('publishForm');
+      const submitPublishBtn = document.getElementById('submitPublishBtn');
+      const typeSupplyBtn = document.getElementById('typeSupplyBtn');
+      const typeDemandBtn = document.getElementById('typeDemandBtn');
+      const rawTextInput = document.getElementById('rawTextInput');
+      const clearRawTextBtn = document.getElementById('clearRawTextBtn');
+      const smartParseHint = document.getElementById('smartParseHint');
+      const fillSampleBtn = document.getElementById('fillSampleBtn');
+
+      // Auth Helpers
+      function getUserDisplayName(user) {
+        if (!user) return '';
+        const nick = user.user_metadata && user.user_metadata.nickname;
+        if (nick && String(nick).trim()) return String(nick).trim();
+        if (user.email) return user.email.split('@')[0];
+        return '已登录用户';
+      }
+
+      function updateAuthUI() {
+        if (currentUser) {
+          const name = getUserDisplayName(currentUser);
+          openAuthBtn.style.display = 'none';
+          authUserGroup.classList.add('visible');
+          userNicknameBadge.textContent = `👤 ${name}`;
+          userNicknameBadge.title = currentUser.email || name;
+          onlyMineBtn.classList.toggle('active', onlyMine);
+        } else {
+          openAuthBtn.style.display = '';
+          authUserGroup.classList.remove('visible');
+          onlyMine = false;
+          onlyMineBtn.classList.remove('active');
+        }
+      }
+
+      function translateAuthError(err) {
+        const msg = (err && err.message ? err.message : String(err || '')).toLowerCase();
+        if (msg.includes('invalid login credentials')) return '邮箱或密码错误，请重新输入';
+        if (msg.includes('email not confirmed')) return '该邮箱尚未完成验证，请先前往邮箱点击确认链接';
+        if (msg.includes('user already registered') || msg.includes('already been registered')) return '该邮箱已注册，请直接切换到「登录」';
+        if (msg.includes('password should be at least 6 characters')) return '密码长度不足 6 位';
+        if (msg.includes('unable to validate email address') || msg.includes('invalid email')) return '邮箱格式不正确';
+        if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('security purposes')) return '操作过于频繁，请稍后再试';
+        if (msg.includes('signup is disabled')) return '当前暂未开放新用户注册';
+        return '操作失败：' + (err && err.message ? err.message : '请稍后重试');
+      }
+
+      async function initAuth() {
+        const { data } = await sb.auth.getSession();
+        currentUser = data && data.session ? data.session.user : null;
+        updateAuthUI();
+        renderCards();
+
+        sb.auth.onAuthStateChange((_event, session) => {
+          currentUser = session ? session.user : null;
+          updateAuthUI();
+          renderCards();
+        });
+      }
+
+      // Supabase Data Helpers
+      function normalizeRow(row) {
+        return {
+          id: row.id,
+          userId: row.user_id || null,
+          authorName: row.author_name || '',
+          type: row.type,
+          title: row.title,
+          channel: row.channel,
+          models: Array.isArray(row.models) ? row.models : [],
+          price: row.price,
+          conditions: Array.isArray(row.conditions) ? row.conditions : [],
+          description: row.description || '',
+          contact: row.contact,
+          status: row.status || 'active',
+          createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now()
+        };
+      }
+
+      async function fetchPosts(options = {}) {
+        const { silent = false } = options;
+        if (!silent) {
+          isLoading = true;
+          loadError = null;
+          renderCards();
+        }
+        try {
+          const { data, error } = await sb
+            .from(TABLE_NAME)
+            .select(SELECT_COLUMNS)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+          posts = (data || []).map(normalizeRow);
+          loadError = null;
+        } catch (err) {
+          console.error('Supabase fetch error:', err);
+          loadError = err.message || '数据加载失败，请检查 Supabase 表结构或网络连接';
+        } finally {
+          isLoading = false;
+          renderCards();
+        }
+      }
+
+      function setupRealtime() {
+        sb.channel('tokenhub-posts-realtime')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: TABLE_NAME },
+            () => {
+              fetchPosts({ silent: true });
+            }
+          )
+          .subscribe();
+      }
+
+      // Theme
+      function initTheme() {
+        const saved = localStorage.getItem(THEME_KEY);
+        const isDark = saved === 'dark';
+        applyTheme(isDark);
+      }
+
+      function applyTheme(isDark) {
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+        document.getElementById('themeLabel').textContent = isDark ? '浅色' : '深色';
+      }
+
+      document.getElementById('themeToggleBtn').addEventListener('click', () => {
+        const isDark = !document.documentElement.classList.contains('dark');
+        applyTheme(isDark);
+        localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      });
+
+      // Discount parsing for sorting & "9折及以下" filter
+      function extractDiscountValue(priceStr) {
+        if (!priceStr) return 999;
+        const s = String(priceStr).toLowerCase();
+        const match = s.match(/(\d+(?:\.\d+)?)\s*折/);
+        if (match) {
+          let num = parseFloat(match[1]);
+          // Handle "75折" -> 7.5
+          if (num > 10 && num <= 100) num = num / 10;
+          return num;
+        }
+        if (s.includes('原价') || s.includes('官价')) return 10;
+        return 999;
+      }
+
+      function isDiscountNineOrBelow(priceStr) {
+        const val = extractDiscountValue(priceStr);
+        return val <= 9.0;
+      }
+
+      function formatRelativeTime(ts) {
+        const diff = Math.max(0, Date.now() - ts);
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return '刚刚';
+        if (mins < 60) return `${mins}分钟前`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}小时前`;
+        const days = Math.floor(hours / 24);
+        return `${days}天前`;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // Render filter chips
+      function renderFilterChips() {
+        const channelWrap = document.getElementById('channelFilterChips');
+        const modelWrap = document.getElementById('modelFilterChips');
+        const condWrap = document.getElementById('conditionFilterChips');
+
+        channelWrap.innerHTML = CHANNEL_OPTIONS.map(ch =>
+          `<button type="button" class="filter-chip ${selectedChannels.has(ch) ? 'active' : ''}" data-filter="channel" data-val="${escapeHtml(ch)}">${escapeHtml(ch)}</button>`
+        ).join('');
+
+        modelWrap.innerHTML = MODEL_OPTIONS.map(m =>
+          `<button type="button" class="filter-chip ${selectedModels.has(m) ? 'active' : ''}" data-filter="model" data-val="${escapeHtml(m)}">${escapeHtml(m)}</button>`
+        ).join('');
+
+        condWrap.innerHTML = CONDITION_FILTER_OPTIONS.map(c =>
+          `<button type="button" class="filter-chip ${selectedConditions.has(c) ? 'active' : ''}" data-filter="condition" data-val="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+        ).join('');
+      }
+
+      function renderFormChips() {
+        const formModelWrap = document.getElementById('formModelChips');
+        const formCondWrap = document.getElementById('formConditionChips');
+
+        formModelWrap.innerHTML = MODEL_OPTIONS.map(m =>
+          `<button type="button" class="select-chip ${formModels.has(m) ? 'selected' : ''}" data-form-model="${escapeHtml(m)}">${escapeHtml(m)}</button>`
+        ).join('');
+
+        formCondWrap.innerHTML = CONDITION_FORM_OPTIONS.map(c =>
+          `<button type="button" class="select-chip ${formConditions.has(c) ? 'selected' : ''}" data-form-cond="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+        ).join('');
+      }
+
+      // Update counts
+      function updateCounts() {
+        countAll.textContent = posts.length;
+        countSupply.textContent = posts.filter(p => p.type === 'supply').length;
+        countDemand.textContent = posts.filter(p => p.type === 'demand').length;
+      }
+
+      // Smart Matching Score
+      function getMatchInfo(sourcePost, candidatePost) {
+        if (sourcePost.type === candidatePost.type) return null;
+
+        const reasons = [];
+        let score = 0;
+
+        if (sourcePost.channel && candidatePost.channel && sourcePost.channel === candidatePost.channel) {
+          score += 2;
+          reasons.push(candidatePost.channel);
+        }
+
+        const srcModels = new Set(sourcePost.models || []);
+        const candModels = candidatePost.models || [];
+        const commonModels = candModels.filter(m =>
+          srcModels.has(m) || m === '全模型' || srcModels.has('全模型')
+        );
+
+        if (commonModels.length > 0) {
+          score += 1 + commonModels.length * 0.5;
+          reasons.push(...commonModels.slice(0, 2));
+        }
+
+        if (score === 0) return null;
+        return {
+          score,
+          reasons: [...new Set(reasons)]
+        };
+      }
+
+      function renderSkeletons() {
+        cardsGrid.innerHTML = Array.from({ length: 4 }).map(() => `
+          <div class="skeleton-card">
+            <div class="skeleton-line w-30"></div>
+            <div class="skeleton-line w-75"></div>
+            <div class="skeleton-line w-90"></div>
+            <div class="skeleton-line w-60"></div>
+          </div>
+        `).join('');
+      }
+
+      // Filter & Render Cards
+      function renderCards() {
+        updateCounts();
+
+        if (isLoading) {
+          renderSkeletons();
+          return;
+        }
+
+        if (loadError) {
+          cardsGrid.innerHTML = `
+            <div class="empty-state">
+              <h3>云端数据加载失败</h3>
+              <p>${escapeHtml(loadError)}</p>
+              <button class="btn-secondary" id="retryLoadBtn" type="button">重新加载</button>
+            </div>
+          `;
+          document.getElementById('retryLoadBtn').addEventListener('click', () => fetchPosts());
+          return;
+        }
+
+        const sourcePost = matchSourceId ? posts.find(p => p.id === matchSourceId) : null;
+        if (matchSourceId && !sourcePost) {
+          matchSourceId = null;
+        }
+
+        let list = [];
+
+        if (sourcePost) {
+          matchBanner.classList.add('visible');
+          const typeLabel = sourcePost.type === 'supply' ? '【出】' : '【找】';
+          matchSourceTitle.textContent = `${typeLabel}${sourcePost.title}`;
+
+          const matched = [];
+          for (const p of posts) {
+            const info = getMatchInfo(sourcePost, p);
+            if (info) {
+              matched.push({ post: p, matchInfo: info });
+            }
+          }
+          matched.sort((a, b) => b.matchInfo.score - a.matchInfo.score || b.post.createdAt - a.post.createdAt);
+          list = matched;
+          matchResultCount.textContent = `（已置顶匹配 ${list.length} 条${sourcePost.type === 'demand' ? '供应资源' : '需求信息'}）`;
+        } else {
+          matchBanner.classList.remove('visible');
+
+          let filtered = posts.filter(p => {
+            if (onlyMine && currentUser && p.userId !== currentUser.id) return false;
+            if (currentView !== 'all' && p.type !== currentView) return false;
+
+            if (searchQuery.trim()) {
+              const q = searchQuery.trim().toLowerCase();
+              const haystack = [
+                p.title,
+                p.channel,
+                (p.models || []).join(' '),
+                p.price,
+                (p.conditions || []).join(' '),
+                p.description,
+                p.contact
+              ].join(' ').toLowerCase();
+              if (!haystack.includes(q)) return false;
+            }
+
+            if (selectedChannels.size > 0 && !selectedChannels.has(p.channel)) {
+              return false;
+            }
+
+            if (selectedModels.size > 0) {
+              const pModels = new Set(p.models || []);
+              const hasAnyModel = [...selectedModels].some(m => pModels.has(m));
+              if (!hasAnyModel) return false;
+            }
+
+            if (selectedConditions.size > 0) {
+              const pConds = new Set(p.conditions || []);
+              for (const cond of selectedConditions) {
+                if (cond === '9折及以下') {
+                  if (!isDiscountNineOrBelow(p.price) && !pConds.has('9折及以下')) return false;
+                } else if (!pConds.has(cond)) {
+                  return false;
+                }
+              }
+            }
+
+            return true;
+          });
+
+          if (sortBy === 'discount') {
+            filtered.sort((a, b) => {
+              const da = extractDiscountValue(a.price);
+              const db = extractDiscountValue(b.price);
+              if (da !== db) return da - db;
+              return b.createdAt - a.createdAt;
+            });
+          } else {
+            filtered.sort((a, b) => b.createdAt - a.createdAt);
+          }
+
+          list = filtered.map(p => ({ post: p, matchInfo: null }));
+        }
+
+        // Update filter footer visibility
+        const hasFilters = Boolean(searchQuery.trim()) || selectedChannels.size > 0 || selectedModels.size > 0 || selectedConditions.size > 0;
+        filterFooter.classList.toggle('visible', hasFilters && !sourcePost);
+        if (hasFilters && !sourcePost) {
+          filterSummaryText.textContent = `当前筛选共匹配到 ${list.length} 条供需信息`;
+        }
+
+        if (list.length === 0) {
+          const hasActiveFilter = Boolean(searchQuery.trim()) || selectedChannels.size > 0 || selectedModels.size > 0 || selectedConditions.size > 0;
+          const emptyTitle = posts.length === 0
+            ? '云端暂无供需信息'
+            : '暂无符合条件的供需信息';
+          const emptyDesc = posts.length === 0
+            ? '数据库目前为空，点击右上角「+ 发布供需」发布第一条信息吧。'
+            : (sourcePost ? '暂未找到包含相同渠道或模型的对向资源，可尝试退出匹配或放宽条件。' : '试试调整搜索关键词或清空部分筛选标签。');
+          cardsGrid.innerHTML = `
+            <div class="empty-state">
+              <h3>${emptyTitle}</h3>
+              <p>${emptyDesc}</p>
+              ${(sourcePost || hasActiveFilter)
+                ? `<button class="btn-secondary" id="emptyResetBtn" type="button">${sourcePost ? '退出匹配模式' : '清空全部筛选'}</button>`
+                : ''}
+            </div>
+          `;
+          const emptyResetBtn = document.getElementById('emptyResetBtn');
+          if (emptyResetBtn) {
+            emptyResetBtn.addEventListener('click', () => {
+              if (sourcePost) {
+                exitMatchMode();
+              } else {
+                resetAllFilters();
+              }
+            });
+          }
+          return;
+        }
+
+        cardsGrid.innerHTML = list.map(({ post, matchInfo }) => {
+          const isSupply = post.type === 'supply';
+          const isClosed = post.status === 'closed';
+          const typeBadgeText = isSupply ? '出资源' : '找台子';
+          const matchBtnText = isSupply ? '找匹配需求' : '找匹配资源';
+          const modelPills = (post.models || []).map(m => `<span class="pill">${escapeHtml(m)}</span>`).join('');
+          const condPills = (post.conditions || []).map(c => `<span class="pill">${escapeHtml(c)}</span>`).join('');
+          const matchReasonHtml = matchInfo
+            ? `<span class="match-reason-badge">匹配: ${escapeHtml(matchInfo.reasons.join(' · '))}</span>`
+            : '';
+          const statusBadgeHtml = isClosed
+            ? `<span class="status-badge-closed">已成交 / 已下架</span>`
+            : '';
+          const isOwner = Boolean(currentUser && post.userId && post.userId === currentUser.id);
+          const toggleText = isClosed ? '重新上架' : '标记已下架';
+          const manageActionsHtml = isOwner
+            ? `<div class="card-manage-actions">
+                 <button class="manage-icon-btn toggle-status-btn" data-id="${escapeHtml(post.id)}" data-status="${escapeHtml(post.status)}" type="button" title="${isClosed ? '重新上架' : '标记为已成交/已下架'}">
+                   ${toggleText}
+                 </button>
+                 <button class="manage-icon-btn danger delete-btn" data-delete-id="${escapeHtml(post.id)}" type="button" title="删除此条供需">
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                     <polyline points="3 6 5 6 21 6"/>
+                     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                     <path d="M10 11v6"/><path d="M14 11v6"/>
+                   </svg>
+                 </button>
+               </div>`
+            : '';
+
+          return `
+            <article class="card ${isClosed ? 'closed' : ''}" data-id="${escapeHtml(post.id)}">
+              <div class="card-header">
+                <div class="card-title-wrap">
+                  <div class="card-badges-top">
+                    <span class="type-badge ${isSupply ? 'supply' : 'demand'}">
+                      <span class="dot ${isSupply ? 'dot-supply' : 'dot-demand'}"></span>
+                      ${typeBadgeText}
+                    </span>
+                    ${statusBadgeHtml}
+                    ${matchReasonHtml}
+                  </div>
+                  <h3 class="card-title">${escapeHtml(post.title)}</h3>
+                </div>
+                ${manageActionsHtml}
+              </div>
+
+              <div class="card-pills">
+                <span class="pill pill-channel">${escapeHtml(post.channel)}</span>
+                ${modelPills}
+                <span class="pill pill-price">${escapeHtml(post.price)}</span>
+                ${condPills}
+              </div>
+
+              <p class="card-desc">${escapeHtml(post.description || '暂无补充说明')}</p>
+
+              <div class="card-meta">
+                <span>${post.authorName ? escapeHtml(post.authorName) + ' · ' : '发布于 '}${formatRelativeTime(post.createdAt)}</span>
+                <span class="contact-preview" title="${escapeHtml(post.contact)}">${escapeHtml(post.contact)}</span>
+              </div>
+
+              <div class="card-actions">
+                <button class="card-btn copy-btn" data-copy="${escapeHtml(post.contact)}" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  复制联系方式
+                </button>
+                <button class="card-btn match-btn" data-match-id="${escapeHtml(post.id)}" type="button">
+                  ⚡ ${matchBtnText}
+                </button>
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
+      // Actions
+      function resetAllFilters() {
+        searchQuery = '';
+        searchInput.value = '';
+        searchClearBtn.classList.remove('visible');
+        selectedChannels.clear();
+        selectedModels.clear();
+        selectedConditions.clear();
+        renderFilterChips();
+        renderCards();
+      }
+
+      function exitMatchMode() {
+        matchSourceId = null;
+        renderCards();
+      }
+
+      function showToast(msg) {
+        const container = document.getElementById('toastContainer');
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => {
+          el.remove();
+        }, 2200);
+      }
+
+      function copyToClipboard(text, btnEl) {
+        const cleanText = text.replace(/^(vx|微信|tg|telegram)[:：\s]*/i, '').trim() || text;
+        const doSuccess = () => {
+          showToast(`已复制联系方式：${cleanText}`);
+          if (btnEl) {
+            const orig = btnEl.innerHTML;
+            btnEl.classList.add('copied');
+            btnEl.textContent = '已复制 ✓';
+            setTimeout(() => {
+              btnEl.classList.remove('copied');
+              btnEl.innerHTML = orig;
+            }, 1600);
+          }
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(cleanText).then(doSuccess).catch(() => fallbackCopy(cleanText, doSuccess));
+        } else {
+          fallbackCopy(cleanText, doSuccess);
+        }
+      }
+
+      function fallbackCopy(text, cb) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          cb();
+        } catch (e) {
+          showToast('复制失败，请手动复制：' + text);
+        }
+        ta.remove();
+      }
+
+      // Event Listeners: Tabs, Search, Filters, Sort
+      document.querySelectorAll('.seg-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          currentView = tab.dataset.view;
+          matchSourceId = null;
+          renderCards();
+        });
+      });
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        searchClearBtn.classList.toggle('visible', searchQuery.length > 0);
+        matchSourceId = null;
+        renderCards();
+      });
+
+      searchClearBtn.addEventListener('click', () => {
+        searchQuery = '';
+        searchInput.value = '';
+        searchClearBtn.classList.remove('visible');
+        renderCards();
+      });
+
+      sortSelect.addEventListener('change', (e) => {
+        sortBy = e.target.value;
+        renderCards();
+      });
+
+      document.querySelector('.filter-groups').addEventListener('click', (e) => {
+        const chip = e.target.closest('.filter-chip');
+        if (!chip) return;
+        const group = chip.dataset.filter;
+        const val = chip.dataset.val;
+        const targetSet = group === 'channel' ? selectedChannels : group === 'model' ? selectedModels : selectedConditions;
+        if (targetSet.has(val)) {
+          targetSet.delete(val);
+        } else {
+          targetSet.add(val);
+        }
+        matchSourceId = null;
+        renderFilterChips();
+        renderCards();
+      });
+
+      resetFiltersBtn.addEventListener('click', resetAllFilters);
+      exitMatchBtn.addEventListener('click', exitMatchMode);
+
+      // Card delegation
+      cardsGrid.addEventListener('click', (e) => {
+        const copyBtn = e.target.closest('.copy-btn');
+        if (copyBtn) {
+          copyToClipboard(copyBtn.dataset.copy, copyBtn);
+          return;
+        }
+
+        const matchBtn = e.target.closest('.match-btn');
+        if (matchBtn) {
+          matchSourceId = matchBtn.dataset.matchId;
+          renderCards();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        const toggleBtn = e.target.closest('.toggle-status-btn');
+        if (toggleBtn) {
+          const postId = toggleBtn.dataset.id;
+          const nextStatus = toggleBtn.dataset.status === 'closed' ? 'active' : 'closed';
+          toggleBtn.disabled = true;
+          (async () => {
+            try {
+              const { error } = await sb
+                .from(TABLE_NAME)
+                .update({ status: nextStatus })
+                .eq('id', postId);
+              if (error) throw error;
+              await fetchPosts({ silent: true });
+              showToast(nextStatus === 'closed' ? '已标记为已下架' : '已重新上架');
+            } catch (err) {
+              console.error('Update status error:', err);
+              showToast('操作失败：' + (err.message || '无权限或网络异常'));
+            } finally {
+              toggleBtn.disabled = false;
+            }
+          })();
+          return;
+        }
+
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+          const postId = deleteBtn.dataset.deleteId;
+          if (!window.confirm('确认永久删除这条供需信息吗？')) return;
+          deleteBtn.disabled = true;
+          (async () => {
+            try {
+              const { error } = await sb
+                .from(TABLE_NAME)
+                .delete()
+                .eq('id', postId);
+              if (error) throw error;
+              if (matchSourceId === postId) matchSourceId = null;
+              await fetchPosts({ silent: true });
+              showToast('已删除该条供需信息');
+            } catch (err) {
+              console.error('Delete error:', err);
+              showToast('删除失败：' + (err.message || '无权限或网络异常'));
+            } finally {
+              deleteBtn.disabled = false;
+            }
+          })();
+        }
+      });
+
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.disabled = true;
+        await fetchPosts({ silent: true });
+        refreshBtn.disabled = false;
+        showToast('已刷新最新供需数据');
+      });
+
+      // Auth Modal & Actions
+      function setAuthMode(mode) {
+        authMode = mode;
+        authTabLogin.classList.toggle('active', mode === 'login');
+        authTabRegister.classList.toggle('active', mode === 'register');
+        authNicknameGroup.style.display = mode === 'register' ? 'flex' : 'none';
+        authPassword.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
+        submitAuthBtn.textContent = mode === 'register' ? '注册并登录' : '立即登录';
+        authErrorText.classList.remove('visible');
+        authSuccessText.classList.remove('visible');
+      }
+
+      function openAuthModal(mode = 'login') {
+        setAuthMode(mode);
+        authForm.reset();
+        authErrorText.classList.remove('visible');
+        authSuccessText.classList.remove('visible');
+        authModal.classList.add('open');
+        setTimeout(() => authEmail.focus(), 50);
+      }
+
+      function closeAuthModal() {
+        authModal.classList.remove('open');
+        pendingOpenPublishAfterLogin = false;
+      }
+
+      openAuthBtn.addEventListener('click', () => openAuthModal('login'));
+      document.getElementById('closeAuthModalBtn').addEventListener('click', closeAuthModal);
+      document.getElementById('cancelAuthModalBtn').addEventListener('click', closeAuthModal);
+      authModal.addEventListener('click', (e) => {
+        if (e.target === authModal) closeAuthModal();
+      });
+
+      authTabLogin.addEventListener('click', () => setAuthMode('login'));
+      authTabRegister.addEventListener('click', () => setAuthMode('register'));
+
+      onlyMineBtn.addEventListener('click', () => {
+        onlyMine = !onlyMine;
+        onlyMineBtn.classList.toggle('active', onlyMine);
+        matchSourceId = null;
+        renderCards();
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        await sb.auth.signOut();
+        currentUser = null;
+        onlyMine = false;
+        updateAuthUI();
+        renderCards();
+        showToast('已退出登录');
+      });
+
+      authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+        const nickname = authNickname.value.trim();
+
+        authErrorText.classList.remove('visible');
+        authSuccessText.classList.remove('visible');
+        submitAuthBtn.disabled = true;
+        submitAuthBtn.textContent = authMode === 'register' ? '注册中...' : '登录中...';
+
+        try {
+          if (authMode === 'register') {
+            const { data, error } = await sb.auth.signUp({
+              email,
+              password,
+              options: {
+                data: nickname ? { nickname } : {}
+              }
+            });
+            if (error) throw error;
+
+            if (data && data.session) {
+              currentUser = data.session.user;
+              updateAuthUI();
+              const shouldOpenPublish = pendingOpenPublishAfterLogin;
+              closeAuthModal();
+              renderCards();
+              showToast('注册并登录成功！');
+              if (shouldOpenPublish) openModal();
+            } else {
+              authSuccessText.textContent = '注册成功！验证邮件已发送至您的邮箱，请点击邮件中的确认链接后再登录。';
+              authSuccessText.classList.add('visible');
+            }
+          } else {
+            const { data, error } = await sb.auth.signInWithPassword({
+              email,
+              password
+            });
+            if (error) throw error;
+
+            currentUser = data.user;
+            updateAuthUI();
+            const shouldOpenPublish = pendingOpenPublishAfterLogin;
+            closeAuthModal();
+            renderCards();
+            showToast(`欢迎回来，${getUserDisplayName(currentUser)}`);
+            if (shouldOpenPublish) openModal();
+          }
+        } catch (err) {
+          authErrorText.textContent = translateAuthError(err);
+          authErrorText.classList.add('visible');
+        } finally {
+          submitAuthBtn.disabled = false;
+          submitAuthBtn.textContent = authMode === 'register' ? '注册并登录' : '立即登录';
+        }
+      });
+
+      // Modal & Form Logic
+      function setFormType(type) {
+        formType = type;
+        typeSupplyBtn.className = 'type-option' + (type === 'supply' ? ' active-supply' : '');
+        typeDemandBtn.className = 'type-option' + (type === 'demand' ? ' active-demand' : '');
+      }
+
+      function openModal() {
+        if (!currentUser) {
+          pendingOpenPublishAfterLogin = true;
+          openAuthModal('login');
+          showToast('请先登录或注册后再发布供需');
+          return;
+        }
+        publishModal.classList.add('open');
+        renderFormChips();
+      }
+
+      function closeModal() {
+        publishModal.classList.remove('open');
+      }
+
+      openPublishBtn.addEventListener('click', openModal);
+      closeModalBtn.addEventListener('click', closeModal);
+      cancelModalBtn.addEventListener('click', closeModal);
+      publishModal.addEventListener('click', (e) => {
+        if (e.target === publishModal) closeModal();
+      });
+
+      typeSupplyBtn.addEventListener('click', () => setFormType('supply'));
+      typeDemandBtn.addEventListener('click', () => setFormType('demand'));
+
+      document.getElementById('formModelChips').addEventListener('click', (e) => {
+        const chip = e.target.closest('.select-chip');
+        if (!chip) return;
+        const m = chip.dataset.formModel;
+        if (formModels.has(m)) formModels.delete(m);
+        else formModels.add(m);
+        renderFormChips();
+      });
+
+      document.getElementById('formConditionChips').addEventListener('click', (e) => {
+        const chip = e.target.closest('.select-chip');
+        if (!chip) return;
+        const c = chip.dataset.formCond;
+        if (formConditions.has(c)) formConditions.delete(c);
+        else formConditions.add(c);
+        renderFormChips();
+      });
+
+      // Smart Paste Parser (instant on paste / input)
+      function parseAndFillFromRawText(raw) {
+        const text = raw.trim();
+        clearRawTextBtn.classList.toggle('visible', text.length > 0);
+        if (!text) {
+          smartParseHint.classList.remove('visible');
+          return;
+        }
+        const lower = text.toLowerCase();
+
+        // 1. Supply vs Demand
+        if (/^(找|求|收|寻)|找台子|求购|求租|急寻|收号/.test(text)) {
+          setFormType('demand');
+        } else if (/^(出|供应|出货)|出资源|现货|一手出/.test(text)) {
+          setFormType('supply');
+        }
+
+        // 2. Channel
+        let detectedChannel = 'OpenRouter';
+        if (/open\s*router|\bor\b/i.test(text)) {
+          detectedChannel = 'OpenRouter';
+        } else if (/官\s*key|官方\s*key|官号|tier\s*\d/i.test(text)) {
+          detectedChannel = '官 Key';
+        } else if (/中转|公益站|分发站|api\s*站/i.test(text)) {
+          detectedChannel = '中转站';
+        } else if (/直连|成品号|独享号|vertex/i.test(text)) {
+          detectedChannel = '直连账号';
+        }
+        document.getElementById('inputChannel').value = detectedChannel;
+
+        // 3. Models
+        formModels.clear();
+        if (/claude|opus|sonnet|haiku|anthropic/i.test(lower)) formModels.add('Claude');
+        if (/gpt|openai|4o|o1|o3/i.test(lower)) formModels.add('GPT');
+        if (/gemini|google|vertex/i.test(lower)) formModels.add('Gemini');
+        if (/全模型|全系/.test(text)) formModels.add('全模型');
+        if (formModels.size === 0) formModels.add('全模型');
+
+        // 4. Conditions
+        formConditions.clear();
+        for (const cond of CONDITION_FORM_OPTIONS) {
+          if (text.includes(cond)) formConditions.add(cond);
+        }
+        renderFormChips();
+
+        // 5. Price / Discount
+        let detectedPrice = '';
+        const discountMatch = text.match(/(\d+(?:\.\d+)?)\s*折/);
+        if (discountMatch) {
+          let num = parseFloat(discountMatch[1]);
+          if (num > 10 && num <= 100) num = num / 10;
+          detectedPrice = `${num}折`;
+        } else if (/量大详谈|面议|私聊报价/.test(text)) {
+          detectedPrice = '量大详谈';
+        } else if (/原价|官价/.test(text)) {
+          detectedPrice = '原价';
+        }
+        if (detectedPrice) {
+          document.getElementById('inputPrice').value = detectedPrice;
+        }
+
+        // 6. Contact
+        let detectedContact = '';
+        const vxMatch = text.match(/(?:vx|v|微信|wechat)[:：\s]*([a-zA-Z0-9_-]{4,})/i);
+        const tgMatch = text.match(/(?:tg|telegram)[:：\s]*(@?[a-zA-Z0-9_]{3,})/i);
+        const atMatch = text.match(/(@[a-zA-Z0-9_]{3,})/);
+        if (vxMatch) detectedContact = `vx: ${vxMatch[1]}`;
+        else if (tgMatch) detectedContact = `tg: ${tgMatch[1]}`;
+        else if (atMatch) detectedContact = `tg: ${atMatch[1]}`;
+        if (detectedContact) {
+          document.getElementById('inputContact').value = detectedContact;
+        }
+
+        // 7. Title & Description
+        const modelStr = [...formModels].join(' / ');
+        const actionVerb = formType === 'supply' ? '跑' : '求';
+        document.getElementById('inputTitle').value = `${detectedChannel} ${actionVerb} ${modelStr}${detectedPrice ? ' · ' + detectedPrice : ''}`;
+        document.getElementById('inputDesc').value = text;
+
+        smartParseHint.classList.add('visible');
+      }
+
+      rawTextInput.addEventListener('input', () => {
+        parseAndFillFromRawText(rawTextInput.value);
+      });
+
+      rawTextInput.addEventListener('paste', () => {
+        setTimeout(() => parseAndFillFromRawText(rawTextInput.value), 0);
+      });
+
+      clearRawTextBtn.addEventListener('click', () => {
+        rawTextInput.value = '';
+        clearRawTextBtn.classList.remove('visible');
+        smartParseHint.classList.remove('visible');
+        rawTextInput.focus();
+      });
+
+      fillSampleBtn.addEventListener('click', () => {
+        rawTextInput.value = '出：open router 跑 Claude opus 4.5，全模型可蒸跑付，价9折，量大可谈，vx: token_master99';
+        parseAndFillFromRawText(rawTextInput.value);
+      });
+
+      // Form Submit (Insert to Supabase with Auth user_id)
+      publishForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentUser) {
+          closeModal();
+          pendingOpenPublishAfterLogin = true;
+          openAuthModal('login');
+          showToast('登录已过期，请重新登录');
+          return;
+        }
+
+        const title = document.getElementById('inputTitle').value.trim();
+        const channel = document.getElementById('inputChannel').value;
+        const price = document.getElementById('inputPrice').value.trim();
+        const customModelsRaw = document.getElementById('inputCustomModels').value.trim();
+        const description = document.getElementById('inputDesc').value.trim();
+        const contact = document.getElementById('inputContact').value.trim();
+
+        const models = [...formModels];
+        if (customModelsRaw) {
+          customModelsRaw.split(/[,，/\s]+/).filter(Boolean).forEach(m => {
+            if (!models.includes(m)) models.push(m);
+          });
+        }
+        if (models.length === 0) models.push('全模型');
+
+        submitPublishBtn.disabled = true;
+        submitPublishBtn.textContent = '发布中...';
+
+        try {
+          const { error } = await sb.from(TABLE_NAME).insert({
+            user_id: currentUser.id,
+            author_name: getUserDisplayName(currentUser),
+            type: formType,
+            title,
+            channel,
+            models,
+            price,
+            conditions: [...formConditions],
+            description: description || `${title}，欢迎联系详谈。`,
+            contact,
+            status: 'active'
+          });
+
+          if (error) throw error;
+
+          matchSourceId = null;
+
+          // Reset form
+          publishForm.reset();
+          rawTextInput.value = '';
+          clearRawTextBtn.classList.remove('visible');
+          smartParseHint.classList.remove('visible');
+          setFormType('supply');
+          formModels = new Set(['Claude']);
+          formConditions = new Set(['跑付']);
+
+          closeModal();
+          await fetchPosts({ silent: true });
+          showToast('发布成功！已同步至云端');
+        } catch (err) {
+          console.error('Publish error:', err);
+          showToast('发布失败：' + (err.message || '请检查网络或数据库权限'));
+        } finally {
+          submitPublishBtn.disabled = false;
+          submitPublishBtn.textContent = '确认发布';
+        }
+      });
+
+      // Init
+      initTheme();
+      renderFilterChips();
+      renderFormChips();
+      initAuth();
+      fetchPosts();
+      setupRealtime();
+    })();
+  </script>
+</body>
+</html>
